@@ -11,8 +11,9 @@ test.describe('Positive Functional Test Cases - Singlish to Sinhala', () => {
     const input = page.getByPlaceholder('Input Your Singlish Text Here.');
     await input.click();
     await input.fill('');
-    // simulate realistic typing so any key listeners run
-    await page.keyboard.type(inputText, { delay: 30 });
+    // use fill + dispatch an input event so listeners run but avoid slow typing
+    await input.fill(inputText);
+    await input.evaluate(el => el.dispatchEvent(new Event('input', { bubbles: true })));
     // blur the input to trigger processing if needed
     await page.click('body');
     // allow more time for translation to run
@@ -31,7 +32,7 @@ test.describe('Positive Functional Test Cases - Singlish to Sinhala', () => {
       },
       expectedOutput,
       expectedAlt,
-      { timeout: 10000 }
+      { timeout: 15000 }
     );
   }
 

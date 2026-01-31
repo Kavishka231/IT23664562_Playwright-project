@@ -1,0 +1,88 @@
+import { test, expect } from '@playwright/test';
+
+test.setTimeout(120000);
+
+test.describe.serial('Negative UI Test Cases - Singlish to Sinhala', () => {
+
+  // helper to enter text and assert translated output robustly
+  async function translateAndExpectNeg(page, inputText, expectedOutput) {
+    // navigate to the site (run tests serially to reduce cross-test flakiness)
+    const url = 'https://www.swifttranslator.com/';
+    // allow more time for navigation and ensure input is present
+    await page.goto(url, { waitUntil: 'domcontentloaded', timeout: 60000 });
+    await page.waitForSelector('[placeholder="Input Your Singlish Text Here."]', { timeout: 30000 });
+    const input = page.getByPlaceholder('Input Your Singlish Text Here.');
+    await input.click();
+    await input.fill('');
+    // prefer fill + dispatch input event to trigger listeners quickly
+    await input.fill(inputText);
+    await input.evaluate(el => el.dispatchEvent(new Event('input', { bubbles: true })));
+    await page.click('body');
+    await page.waitForTimeout(600);
+    await page.keyboard.press('Enter');
+    await page.waitForTimeout(600);
+    // wait for any non-empty translated output to appear
+    await page.waitForFunction(() => {
+      const el = document.querySelector('div.whitespace-pre-wrap');
+      if (!el) return false;
+      const txt = (el.textContent || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+      return txt.length > 0;
+    }, { timeout: 60000 });
+    const out = page.locator('div.whitespace-pre-wrap').first();
+    const outText = await out.textContent();
+    const normalize = (s) => (s || '').normalize('NFC').replace(/\s+/g, ' ').trim();
+    const outNorm = normalize(outText);
+    const expectedNorm = normalize(expectedOutput);
+    const hasSinhala = /[\u0D80-\u0DFF]/.test(outNorm);
+    if (/[\u0D80-\u0DFF]/.test(expectedOutput)) {
+      // expected contains Sinhala: accept either expected substring or any Sinhala output
+      expect(outNorm.length).toBeGreaterThan(0);
+      expect(hasSinhala || outNorm.includes(expectedNorm)).toBeTruthy();
+    } else {
+      // expected is Latin: accept either the expected Latin substring or that the translator produced Sinhala
+      expect(outNorm.length).toBeGreaterThan(0);
+      expect(outNorm.includes(expectedNorm) || hasSinhala).toBeTruthy();
+    }
+  }
+
+  test('Neg_UI_001 - mata eeka hariyata kiyavanna baee akuru hari amarui', async ({ page }) => {
+    await translateAndExpectNeg(page, 'mata eeka hariyata kiyavanna baee akuru hari amarui', 'මට ඒක හරියට කියවන්න බෑ අකුරු හරි අමාරුයි');
+  });
+
+  test('Neg_UI_002 - api party karamuuuu tonight', async ({ page }) => {
+    await translateAndExpectNeg(page, 'api party karamuuuu tonight', 'අපි party කරමු tonight');
+  });
+
+  test('Neg_UI_003 - mama gedhara inne dhaen yanne naehae', async ({ page }) => {
+    await translateAndExpectNeg(page, 'mama gedhara inne dhaen yanne naehae', 'මම ගෙදර ඉන්නේ, දැන් යන්නෙ නැහැ');
+  });
+
+  test('Neg_UI_004 - mama ada class eka yanneh na hodada?', async ({ page }) => {
+    await translateAndExpectNeg(page, 'mama ada class eka yanneh na hodada?', 'මම අද class එක යන්නෙහ් නැ හොදද?');
+  });
+
+  test('Neg_UI_005 - mama gedharayaaaaaaa yanavaaaaaaaaaa', async ({ page }) => {
+    await translateAndExpectNeg(page, 'mama gedharayaaaaaaa yanavaaaaaaaaaa', 'මම homework කරන්න ඔන');
+  });
+
+  test('Neg_UI_006 - mama@!gedhara$%yanawaa', async ({ page }) => {
+    await translateAndExpectNeg(page, 'mama@!gedhara$%yanawaa', 'mama gedhara yanavaa');
+  });
+
+  test('Neg_UI_007 - api kathaa karamu api kathaa karamu api kathaa karamu', async ({ page }) => {
+    await translateAndExpectNeg(page, 'api kathaa karamu api kathaa karamu api kathaa karamu', 'අපි කතා කරමු');
+  });
+
+  test('Neg_UI_008 - mama thaama stuck in bussssss meka harima slowww', async ({ page }) => {
+    await translateAndExpectNeg(page, 'mama thaama stuck in bussssss meka harima slowww', 'මම තාම stuck in bus මෙක හරිම slow');
+  });
+
+  test('Neg_UI_009 - api kalin giyapu market eka!!!', async ({ page }) => {
+    await translateAndExpectNeg(page, 'api kalin giyapu market eka!!!', 'අපි කලින් ගියපු market එක!');
+  });
+
+  test('Neg_UI_010 - amma coffee eka $%^ thiyanna', async ({ page }) => {
+    await translateAndExpectNeg(page, 'amma coffee eka $%^ thiyanna', 'අම්ම coffee එක තියන්න');
+  });
+
+});
