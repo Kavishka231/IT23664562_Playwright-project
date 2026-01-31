@@ -13,9 +13,10 @@ test.describe('UI Test Cases Singlish to Sinhala', () => {
     const input = page.getByPlaceholder('Input Your Singlish Text Here.');
     const output = page.locator('div.whitespace-pre-wrap').first();
 
-    // 3. Ensure input is empty then type slowly to simulate user typing
+    // 3. Ensure input is empty then fill and dispatch input event (faster and reliable)
     await input.fill('');
-    await input.type('mama gedhara yanavaa', { delay: 80 });
+    await input.fill('mama gedhara yanavaa');
+    await input.evaluate(el => el.dispatchEvent(new Event('input', { bubbles: true })));
     // some UI behaviors require blurring the input and/or pressing Enter
     await page.click('body');
     await page.keyboard.press('Enter');
@@ -26,10 +27,10 @@ test.describe('UI Test Cases Singlish to Sinhala', () => {
       await page.waitForFunction(() => {
         const els = document.querySelectorAll('div.whitespace-pre-wrap');
         return Array.from(els).some(el => (el.textContent || '').trim().length > 0);
-      }, { timeout: 8000 });
+      }, { timeout: 15000 });
       sawOutput = true;
     } catch (e) {
-      console.warn('UI-behavior: output did not appear within short timeout; continuing with fallback.');
+      console.warn('UI-behavior: output did not appear within short timeout; saving screenshot and failing.');
     }
 
     if (sawOutput) {
@@ -39,9 +40,14 @@ test.describe('UI Test Cases Singlish to Sinhala', () => {
       });
       await expect(anyText.length).toBeGreaterThan(0);
     } else {
-      // fallback: ensure input contains typed text (sanity check)
-      const val = await input.inputValue();
-      await expect(val).toContain('mama gedhara yanavaa');
+      // fallback: capture screenshot and fail with helpful message
+      const path = `artifacts/ui-behavior-no-output-${Date.now()}.png`;
+      try {
+        await page.screenshot({ path, fullPage: false });
+      } catch (e) {
+        // ignore screenshot failures
+      }
+      throw new Error(`UI-behavior: no output within timeout; screenshot: ${path}`);
     }
     
     console.log('UI test passed: Output updated while typing.');

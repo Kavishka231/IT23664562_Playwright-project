@@ -1,9 +1,12 @@
 import { test, expect } from '@playwright/test';
 
+test.setTimeout(120000);
+
 test.describe('Positive Functional Test Cases - Singlish to Sinhala', () => {
 
   test.beforeEach(async ({ page }) => {
     await page.goto('https://www.swifttranslator.com/');
+    await page.waitForSelector('[placeholder="Input Your Singlish Text Here."]', { timeout: 30000 });
   });
 
   // helper to enter text and assert translated output
@@ -11,7 +14,7 @@ test.describe('Positive Functional Test Cases - Singlish to Sinhala', () => {
     const input = page.getByPlaceholder('Input Your Singlish Text Here.');
     await input.click();
     await input.fill('');
-    // use fill + dispatch an input event so listeners run but avoid slow typing
+    // use fill + dispatch input event so listeners run but avoid slow typing
     await input.fill(inputText);
     await input.evaluate(el => el.dispatchEvent(new Event('input', { bubbles: true })));
     // blur the input to trigger processing if needed
